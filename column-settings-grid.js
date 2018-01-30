@@ -21,16 +21,37 @@
         onRender: function () {
             console.log("inside onRender");
             this.callParent(arguments);
-//            var decodedValue = this.value;
-//            console.log('decodedValue= ', decodedValue);
-//            if (Ext.isString(decodedValue)) {
-//                decodedValue = Ext.JSON.decode(decodedValue);
-//            }
+
+           var decodedValue = this.value;
+           console.log('decodedValue= ', decodedValue);
+           if (Ext.isString(decodedValue)) {
+               decodedValue = Ext.JSON.decode(decodedValue);
+           }
+           this.columnDefs = decodedValue;
+
             this._store = Ext.create('Ext.data.Store', {
                 fields: ['column', 'display', 'mapping'],
                 data: []
             });
             this._buildGrid();
+        },
+        updateField: function(fieldRecord){
+
+           console.log('updateField', fieldRecord, this.columnDefs);
+           fieldRecord.getAllowedValueStore().load({
+               callback: function (records) {
+                   var data = [];
+                   Ext.Array.each(records, function (r) {
+                       if (r.get('StringValue') && r.get('StringValue').length > 0) {
+                           data.push(this._recordToGridRow(r, this.columnDefs));
+                       }
+                   }, this);
+                   console.log('data is: ', data);
+                   //var data = Ext.Array.map(records, this._recordToGridRow, this);
+                   this._store.loadRawData(data);
+               },
+               scope: this
+           });
         },
         _buildGrid: function () {
             console.log("inside buildGrid", this._store);
@@ -48,26 +69,26 @@
                 maxHeight: 132,
                 scroll: true,
                 store: this._store,
-                handlesEvents: {
-                    fieldselected: function (field) {
-                        //console.log('inside field selected event handler');
-                        //Change the grid to contain rows for the new field
-                        field.getAllowedValueStore().load({
-                            callback: function (records) {
-                                var data = [];
-                                Ext.Array.each(records, function (r) {
-                                    if (r.get('StringValue') && r.get('StringValue').length > 0) {
-                                        data.push(this._recordToGridRow(r));
-                                    }
-                                }, this);
-                                console.log('data is: ', data);
-                                //var data = Ext.Array.map(records, this._recordToGridRow, this);
-                                this._store.loadRawData(data);
-                            },
-                            scope: this
-                        });
-                    }
-                }
+                // handlesEvents: {
+                //     fieldselected: function (field) {
+                //         //console.log('inside field selected event handler');
+                //         //Change the grid to contain rows for the new field
+                //         field.getAllowedValueStore().load({
+                //             callback: function (records) {
+                //                 var data = [];
+                //                 Ext.Array.each(records, function (r) {
+                //                     if (r.get('StringValue') && r.get('StringValue').length > 0) {
+                //                         data.push(this._recordToGridRow(r));
+                //                     }
+                //                 }, this);
+                //                 console.log('data is: ', data);
+                //                 //var data = Ext.Array.map(records, this._recordToGridRow, this);
+                //                 this._store.loadRawData(data);
+                //             },
+                //             scope: this
+                //         });
+                //     }
+                // }
             });
         },
         _getColumnCfgs: function () {
@@ -103,7 +124,7 @@
                 {
                     text: 'Task State Mapping',
                     dataIndex: 'mapping',
-                    emptyCellText: '--No Mapping--',
+                    //emptyCellText: '--No Mapping--',
                     flex: 2,
                     editor: {
                         xtype: 'rallyfieldvaluecombobox',
@@ -115,22 +136,27 @@
                                 noMapping[combo.displayField] = '--No Mapping--';
                                 noMapping[combo.valueField] = '';
                                 combo.store.insert(0, [noMapping]);
+                                combo.setValue(null);
                             }
                         }
+                    },
+                    renderer: function(v,m,r){
+                      console.log('renderer',v);
+                      return v;
                     }
                 }
             ];
             console.log("inside getColumnCfgs", columns);
             return columns;
         },
-        _recordToGridRow: function (allowedValue) {
+        _recordToGridRow: function (allowedValue, columnDefs) {
             var columnName = allowedValue.get('StringValue');
             //Look to see if the grid has data in it (_store is the grid's data stor)
             //If the store is empty, pref will be null, else pref will have the last set of column defs
-            var pref = this._store.getCount() === 0 ? null : this.getSetting('columnDefs');
+            var pref = this._store.getCount() === 0 ? columnDefs : null;
             var row = null;
             console.log('recordToGridRow ', columnName, this._store.getCount());
-            console.log('columnDefs: ', this.getSetting('columnDefs'));
+            console.log('columnDefs: ', columnDefs, Ext.isArray(columnDefs));
             console.log("Pref: ", pref);
             // look for the same row in the pref's
             if (pref) {
@@ -152,6 +178,7 @@
         getSubmitData: function () {
             var data = {};
             data[this.name] = Ext.JSON.encode(this._getData());
+            console.log('data', data);
             return data;
         },
         _getData: function () {
@@ -178,4 +205,3 @@
         }
     });
 })();
-
