@@ -81,20 +81,31 @@ Ext.define('CustomApp', {
                             var attr = record.get('fieldDefinition').attributeDefinition;
                             return attr && !attr.ReadOnly && attr.Constrained && "STRING" === attr.AttributeType;
                         });
+
                     },
                     select: function (combo) {
                         console.log('select listener activated');
-                        this.fireEvent('fieldselected', combo.getRecord().get('fieldDefinition'));
+                      //  this.fireEvent('fieldselected', combo.getRecord().get('fieldDefinition'));
                     }
+
                 },
-                bubbleEvents: ['fieldselected', 'fieldready']
+                bubbleEvents: ['select', 'ready']
             },
             {
                 name: 'columnDefs',
                 fieldLabel: 'Column Definitions',
                 xtype: 'kanbancolumnsettngscomp',
                 margin: '2 0 0 0',
-                width: 600
+                width: 600,
+              //  columnDefs: this.getSetting('columnDefs'),
+                handlesEvents: {
+                     select: function(cb){
+                        this.updateField(cb.getRecord().get('fieldDefinition'));
+                     },
+                     ready: function(cb){
+                        this.updateField(cb.getRecord().get('fieldDefinition'));
+                     }
+                }
             },
             {
                 xtype: 'textareafield',
