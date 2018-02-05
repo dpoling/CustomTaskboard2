@@ -22,12 +22,12 @@
             console.log("inside onRender");
             this.callParent(arguments);
 
-           var decodedValue = this.value;
-           console.log('decodedValue= ', decodedValue);
-           if (Ext.isString(decodedValue)) {
-               decodedValue = Ext.JSON.decode(decodedValue);
-           }
-           this.columnDefs = decodedValue;
+            var decodedValue = this.value;
+            console.log('decodedValue= ', decodedValue);
+            if (Ext.isString(decodedValue)) {
+                decodedValue = Ext.JSON.decode(decodedValue);
+            }
+            this.columnDefs = decodedValue;
 
             this._store = Ext.create('Ext.data.Store', {
                 fields: ['column', 'display', 'mapping'],
@@ -35,23 +35,22 @@
             });
             this._buildGrid();
         },
-        updateField: function(fieldRecord){
+        updateField: function (fieldRecord) {
 
-           console.log('updateField', fieldRecord, this.columnDefs);
-           fieldRecord.getAllowedValueStore().load({
-               callback: function (records) {
-                   var data = [];
-                   Ext.Array.each(records, function (r) {
-                       if (r.get('StringValue') && r.get('StringValue').length > 0) {
-                           data.push(this._recordToGridRow(r, this.columnDefs));
-                       }
-                   }, this);
-                   console.log('data is: ', data);
-                   //var data = Ext.Array.map(records, this._recordToGridRow, this);
-                   this._store.loadRawData(data);
-               },
-               scope: this
-           });
+            console.log('updateField', fieldRecord, this.columnDefs);
+            fieldRecord.getAllowedValueStore().load({
+                callback: function (records) {
+                    var data = [];
+                    Ext.Array.each(records, function (r) {
+                        if (r.get('StringValue') && r.get('StringValue').length > 0) {
+                            data.push(this._recordToGridRow(r, this.columnDefs));
+                        }
+                    }, this);
+                    console.log('data is: ', data);
+                    this._store.loadRawData(data);
+                },
+                scope: this
+            });
         },
         _buildGrid: function () {
             console.log("inside buildGrid", this._store);
@@ -68,27 +67,7 @@
                 minHeight: 122,
                 maxHeight: 132,
                 scroll: true,
-                store: this._store,
-                // handlesEvents: {
-                //     fieldselected: function (field) {
-                //         //console.log('inside field selected event handler');
-                //         //Change the grid to contain rows for the new field
-                //         field.getAllowedValueStore().load({
-                //             callback: function (records) {
-                //                 var data = [];
-                //                 Ext.Array.each(records, function (r) {
-                //                     if (r.get('StringValue') && r.get('StringValue').length > 0) {
-                //                         data.push(this._recordToGridRow(r));
-                //                     }
-                //                 }, this);
-                //                 console.log('data is: ', data);
-                //                 //var data = Ext.Array.map(records, this._recordToGridRow, this);
-                //                 this._store.loadRawData(data);
-                //             },
-                //             scope: this
-                //         });
-                //     }
-                // }
+                store: this._store
             });
         },
         _getColumnCfgs: function () {
@@ -103,7 +82,7 @@
                 {
                     text: 'Column',
                     dataIndex: 'column',
-                    emptyCellText: 'None',
+                    emptyCellText: '- None -',
                     flex: 2
                 },
                 {
@@ -140,9 +119,9 @@
                             }
                         }
                     },
-                    renderer: function(v,m,r){
-                      console.log('renderer',v);
-                      return v;
+                    renderer: function (v) {
+                        console.log('renderer', v);
+                        return v;
                     }
                 }
             ];

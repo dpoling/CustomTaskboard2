@@ -31,12 +31,12 @@
             console.log("inside onRender");
             this.callParent(arguments);
 
-           var decodedValue = this.value;
-           console.log('decodedValue= ', decodedValue);
-           if (Ext.isString(decodedValue)) {
-               decodedValue = Ext.JSON.decode(decodedValue);
-           }
-           this.columnDefs = decodedValue;
+            var decodedValue = this.value;
+            console.log('decodedValue= ', decodedValue);
+            if (Ext.isString(decodedValue)) {
+                decodedValue = Ext.JSON.decode(decodedValue);
+            }
+            this.columnDefs = decodedValue;
 
             this._store = Ext.create('Ext.data.Store', {
                 fields: ['column', 'display', 'mapping'],
@@ -44,23 +44,22 @@
             });
             this._buildGrid();
         },
-        updateField: function(fieldRecord){
+        updateField: function (fieldRecord) {
 
-           console.log('updateField', fieldRecord, this.columnDefs);
-           fieldRecord.getAllowedValueStore().load({
-               callback: function (records) {
-                   var data = [];
-                   Ext.Array.each(records, function (r) {
-                       if (r.get('StringValue') && r.get('StringValue').length > 0) {
-                           data.push(this._recordToGridRow(r, this.columnDefs));
-                       }
-                   }, this);
-                   console.log('data is: ', data);
-                   //var data = Ext.Array.map(records, this._recordToGridRow, this);
-                   this._store.loadRawData(data);
-               },
-               scope: this
-           });
+            console.log('updateField', fieldRecord, this.columnDefs);
+            fieldRecord.getAllowedValueStore().load({
+                callback: function (records) {
+                    var data = [];
+                    Ext.Array.each(records, function (r) {
+                        if (r.get('StringValue') && r.get('StringValue').length > 0) {
+                            data.push(this._recordToGridRow(r, this.columnDefs));
+                        }
+                    }, this);
+                    console.log('data is: ', data);
+                    this._store.loadRawData(data);
+                },
+                scope: this
+            });
         },
         _buildGrid: function () {
             console.log("inside buildGrid", this._store);
@@ -77,27 +76,7 @@
                 minHeight: 122,
                 maxHeight: 132,
                 scroll: true,
-                store: this._store,
-                // handlesEvents: {
-                //     fieldselected: function (field) {
-                //         //console.log('inside field selected event handler');
-                //         //Change the grid to contain rows for the new field
-                //         field.getAllowedValueStore().load({
-                //             callback: function (records) {
-                //                 var data = [];
-                //                 Ext.Array.each(records, function (r) {
-                //                     if (r.get('StringValue') && r.get('StringValue').length > 0) {
-                //                         data.push(this._recordToGridRow(r));
-                //                     }
-                //                 }, this);
-                //                 console.log('data is: ', data);
-                //                 //var data = Ext.Array.map(records, this._recordToGridRow, this);
-                //                 this._store.loadRawData(data);
-                //             },
-                //             scope: this
-                //         });
-                //     }
-                // }
+                store: this._store
             });
         },
         _getColumnCfgs: function () {
@@ -112,7 +91,7 @@
                 {
                     text: 'Column',
                     dataIndex: 'column',
-                    emptyCellText: 'None',
+                    emptyCellText: '- None -',
                     flex: 2
                 },
                 {
@@ -149,9 +128,9 @@
                             }
                         }
                     },
-                    renderer: function(v,m,r){
-                      console.log('renderer',v);
-                      return v;
+                    renderer: function (v) {
+                        console.log('renderer', v);
+                        return v;
                     }
                 }
             ];
@@ -214,7 +193,6 @@
         }
     });
 })();
-
                 Ext.define('CustomApp', {
     extend: 'Rally.app.App',
     componentCls: 'app',
@@ -238,14 +216,27 @@
         this.add({
             xtype: 'rallycardboard',
             types: ['Task'],
-            attribute: 'State',
+            attribute: this.getSetting('groupByField'),
             context: this.getContext(),
             rowConfig: {
                 field: 'WorkProduct'
             },
             storeConfig: {
                 filters: this._getFilters()
+            },
+            columnConfig: {
+                listeners: {
+                    beforecarddroppedsave: {
+                        fn: this._onBeforeCardDroppedSave,
+                        scope: this
+                    },
+                    beforerender: {
+                        fn: this._onBeforeRenderColumn,
+                        scope: this
+                    }
+                }
             }
+
         });
         console.log('after adding the board');
     },
@@ -273,17 +264,51 @@
             }
         }
     },
+    _onBeforeRenderColumn: function (col) {
+        console.log('in onBeforeRenderColumn column = ', col.columnHeaderConfig.headerTpl);
+        var columnSetting = this._getColumnSetting();
+        if (columnSetting) {
+            var setting = _.find(columnSetting,
+                    function (row) {
+                        return row.column === col.columnHeaderConfig.headerTpl;
+                    });
+            if (setting) {
+                console.log('display = ', setting.display);
+                col.hidden = setting.display === false;
+            } else {
+                col.hidden = true;
+            }
+        }
+    },
+    _onBeforeCardDroppedSave: function (destCol, card) {
+        console.log("In _onBeforeCardDroppedSaved");
+        console.log('destCol= ', destCol);
+        var columnSetting = this._getColumnSetting();
+        if (columnSetting) {
+            var setting = _.find(columnSetting,
+                    function (row) {
+                        return row.column === destCol.columnHeaderConfig.headerTpl;
+                    });
+
+            console.log("Task State: ", setting);
+            if (setting) {
+                card.getRecord().set('State', setting.mapping);
+            }
+        }
+    },
+    _getColumnSetting: function () {
+        console.log("In _getColumnSetting");
+        var columnSetting = this.getSetting('columnDefs');
+        console.log("Columns: ", columnSetting);
+        return columnSetting && Ext.JSON.decode(columnSetting);
+    },
+
     onTimeboxScopeChange: function (timeboxScope) {
         this.getContext().setTimeboxScope(timeboxScope);
         this._removeBoard();
         this._addBoard();
     },
     getSettingsFields: function () {
-//        var parent = this;
-//        var _columnDefsStore = Ext.create('Ext.data.Store', {
-//            fields: ['column', 'display', 'mapping'],
-//            data: []
-//        });
         console.log('In getSettingsFields');
         return [
             {
@@ -301,8 +326,8 @@
 
                     },
                     select: function (combo) {
-                        console.log('select listener activated');
-                      //  this.fireEvent('fieldselected', combo.getRecord().get('fieldDefinition'));
+                        console.log('select listener activated', combo);
+                        //  this.fireEvent('fieldselected', combo.getRecord().get('fieldDefinition'));
                     }
 
                 },
@@ -314,14 +339,13 @@
                 xtype: 'kanbancolumnsettngscomp',
                 margin: '2 0 0 0',
                 width: 600,
-              //  columnDefs: this.getSetting('columnDefs'),
                 handlesEvents: {
-                     select: function(cb){
+                    select: function (cb) {
                         this.updateField(cb.getRecord().get('fieldDefinition'));
-                     },
-                     ready: function(cb){
+                    },
+                    ready: function (cb) {
                         this.updateField(cb.getRecord().get('fieldDefinition'));
-                     }
+                    }
                 }
             },
             {
@@ -357,12 +381,12 @@
             ]
         });
         var columns = [
-            {
-                text: 'Column',
-                dataIndex: 'column',
-                emptyCellText: 'None',
-                flex: 200
-            },
+//            {
+//                text: 'Column',
+//                dataIndex: 'column',
+//                emptyCellText: 'None',
+//                flex: 200
+//            },
             {
                 text: 'Display',
                 dataIndex: 'display',
@@ -424,7 +448,6 @@
     }
 
 });
-
 
             Rally.launchApp('CustomApp', {
                 name:"Custom Task Board",

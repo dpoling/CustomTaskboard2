@@ -21,14 +21,27 @@ Ext.define('CustomApp', {
         this.add({
             xtype: 'rallycardboard',
             types: ['Task'],
-            attribute: 'State',
+            attribute: this.getSetting('groupByField'),
             context: this.getContext(),
             rowConfig: {
                 field: 'WorkProduct'
             },
             storeConfig: {
                 filters: this._getFilters()
+            },
+            columnConfig: {
+                listeners: {
+                    beforecarddroppedsave: {
+                        fn: this._onBeforeCardDroppedSave,
+                        scope: this
+                    },
+                    beforerender: {
+                        fn: this._onBeforeRenderColumn,
+                        scope: this
+                    }
+                }
             }
+
         });
         console.log('after adding the board');
     },
@@ -56,17 +69,51 @@ Ext.define('CustomApp', {
             }
         }
     },
+    _onBeforeRenderColumn: function (col) {
+        console.log('in onBeforeRenderColumn column = ', col.columnHeaderConfig.headerTpl);
+        var columnSetting = this._getColumnSetting();
+        if (columnSetting) {
+            var setting = _.find(columnSetting,
+                    function (row) {
+                        return row.column === col.columnHeaderConfig.headerTpl;
+                    });
+            if (setting) {
+                console.log('display = ', setting.display);
+                col.hidden = setting.display === false;
+            } else {
+                col.hidden = true;
+            }
+        }
+    },
+    _onBeforeCardDroppedSave: function (destCol, card) {
+        console.log("In _onBeforeCardDroppedSaved");
+        console.log('destCol= ', destCol);
+        var columnSetting = this._getColumnSetting();
+        if (columnSetting) {
+            var setting = _.find(columnSetting,
+                    function (row) {
+                        return row.column === destCol.columnHeaderConfig.headerTpl;
+                    });
+
+            console.log("Task State: ", setting);
+            if (setting) {
+                card.getRecord().set('State', setting.mapping);
+            }
+        }
+    },
+    _getColumnSetting: function () {
+        console.log("In _getColumnSetting");
+        var columnSetting = this.getSetting('columnDefs');
+        console.log("Columns: ", columnSetting);
+        return columnSetting && Ext.JSON.decode(columnSetting);
+    },
+
     onTimeboxScopeChange: function (timeboxScope) {
         this.getContext().setTimeboxScope(timeboxScope);
         this._removeBoard();
         this._addBoard();
     },
     getSettingsFields: function () {
-//        var parent = this;
-//        var _columnDefsStore = Ext.create('Ext.data.Store', {
-//            fields: ['column', 'display', 'mapping'],
-//            data: []
-//        });
         console.log('In getSettingsFields');
         return [
             {
@@ -84,8 +131,8 @@ Ext.define('CustomApp', {
 
                     },
                     select: function (combo) {
-                        console.log('select listener activated');
-                      //  this.fireEvent('fieldselected', combo.getRecord().get('fieldDefinition'));
+                        console.log('select listener activated', combo);
+                        //  this.fireEvent('fieldselected', combo.getRecord().get('fieldDefinition'));
                     }
 
                 },
@@ -97,14 +144,13 @@ Ext.define('CustomApp', {
                 xtype: 'kanbancolumnsettngscomp',
                 margin: '2 0 0 0',
                 width: 600,
-              //  columnDefs: this.getSetting('columnDefs'),
                 handlesEvents: {
-                     select: function(cb){
+                    select: function (cb) {
                         this.updateField(cb.getRecord().get('fieldDefinition'));
-                     },
-                     ready: function(cb){
+                    },
+                    ready: function (cb) {
                         this.updateField(cb.getRecord().get('fieldDefinition'));
-                     }
+                    }
                 }
             },
             {
@@ -143,7 +189,7 @@ Ext.define('CustomApp', {
             {
                 text: 'Column',
                 dataIndex: 'column',
-                emptyCellText: 'None',
+                emptyCellText: '- None -',
                 flex: 200
             },
             {
