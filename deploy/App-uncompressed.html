@@ -91,7 +91,7 @@
                 {
                     text: 'Column',
                     dataIndex: 'column',
-                    emptyCellText: '- None -',
+                    emptyCellText: 'No Entry',
                     flex: 2
                 },
                 {
@@ -204,7 +204,8 @@
                 {column: 'Defined', display: true, mapping: 'Defined'},
                 {column: 'In-Progress', display: true, mapping: 'In-Progress'},
                 {column: 'Completed', display: true, mapping: 'Completed'}
-            ]
+            ],
+            noEntry: false
         }
     },
     launch: function () {
@@ -236,17 +237,18 @@
                     }
                 }
             }
-
         });
-        console.log('after adding the board');
+//        console.log('after adding the board');
     },
     _removeBoard: function () {
+        console.log('removeBoard');
         var board = this.down('rallycardboard');
         if (board) {
             this.remove(board);
         }
     },
     _getFilters: function () {
+        console.log('getFilters');
         var tbScope = this.getContext().getTimeboxScope();
         var qFilter = this.getSetting('myQuery');
         if (tbScope) {
@@ -265,24 +267,26 @@
         }
     },
     _onBeforeRenderColumn: function (col) {
-        console.log('in onBeforeRenderColumn column = ', col.columnHeaderConfig.headerTpl);
+        console.log('onBeforeRenderColumn column = ', col.columnHeaderConfig.headerTpl);
         var columnSetting = this._getColumnSetting();
+        var noEntry = this.getSetting('noEntry');
+//        console.log("noEntry = ", noEntry);
         if (columnSetting) {
             var setting = _.find(columnSetting,
                     function (row) {
                         return row.column === col.columnHeaderConfig.headerTpl;
                     });
             if (setting) {
-                console.log('display = ', setting.display);
+//                console.log('display = ', setting.display);
                 col.hidden = setting.display === false;
             } else {
-                col.hidden = true;
+                col.hidden = !noEntry;
             }
         }
     },
     _onBeforeCardDroppedSave: function (destCol, card) {
-        console.log("In _onBeforeCardDroppedSaved");
-        console.log('destCol= ', destCol);
+        console.log("onBeforeCardDroppedSaved");
+//        console.log('destCol= ', destCol);
         var columnSetting = this._getColumnSetting();
         if (columnSetting) {
             var setting = _.find(columnSetting,
@@ -290,26 +294,27 @@
                         return row.column === destCol.columnHeaderConfig.headerTpl;
                     });
 
-            console.log("Task State: ", setting);
+//            console.log("Task State: ", setting);
             if (setting) {
                 card.getRecord().set('State', setting.mapping);
             }
         }
     },
     _getColumnSetting: function () {
-        console.log("In _getColumnSetting");
+        console.log("_getColumnSetting");
         var columnSetting = this.getSetting('columnDefs');
-        console.log("Columns: ", columnSetting);
-        return columnSetting && Ext.JSON.decode(columnSetting);
+//        console.log("Columns: ", columnSetting);
+        return columnSetting && Ext.JSON.decode(columnSetting, true);
     },
 
     onTimeboxScopeChange: function (timeboxScope) {
+        console.log('onTimeboxScopeChange');
         this.getContext().setTimeboxScope(timeboxScope);
         this._removeBoard();
         this._addBoard();
     },
     getSettingsFields: function () {
-        console.log('In getSettingsFields');
+        console.log('getSettingsFields');
         return [
             {
                 name: 'groupByField',
@@ -324,12 +329,7 @@
                             return attr && !attr.ReadOnly && attr.Constrained && "STRING" === attr.AttributeType;
                         });
 
-                    },
-                    select: function (combo) {
-                        console.log('select listener activated', combo);
-                        //  this.fireEvent('fieldselected', combo.getRecord().get('fieldDefinition'));
                     }
-
                 },
                 bubbleEvents: ['select', 'ready']
             },
@@ -347,6 +347,11 @@
                         this.updateField(cb.getRecord().get('fieldDefinition'));
                     }
                 }
+            },
+            {
+                name: 'noEntry',
+                xtype: 'rallycheckboxfield',
+                fieldLabel: 'Show values with No-Entry'
             },
             {
                 xtype: 'textareafield',
@@ -371,80 +376,6 @@
                 }
             }
         ];
-    },
-    _getColumnCfgs: function () {
-        var ynStore = Ext.create('Rally.data.custom.Store', {
-            fields: ['name', 'value'],
-            data: [
-                {name: "No", value: false},
-                {name: "Yes", value: true}
-            ]
-        });
-        var columns = [
-//            {
-//                text: 'Column',
-//                dataIndex: 'column',
-//                emptyCellText: 'None',
-//                flex: 200
-//            },
-            {
-                text: 'Display',
-                dataIndex: 'display',
-                width: 75,
-                xtype: 'templatecolumn',
-                tpl: Ext.create('Rally.ui.renderer.template.BooleanTemplate', {
-                    fieldName: 'display'
-                }),
-                editor: {
-                    xtype: 'rallycombobox',
-                    store: ynStore,
-                    displayField: 'name',
-                    valueField: 'value'
-                }
-            },
-            {
-                text: 'Task State Mapping',
-                dataIndex: 'mapping',
-                emptyCellText: '--No Mapping--',
-                flex: 3,
-                editor: {
-                    xtype: 'rallyfieldvaluecombobox',
-                    model: Ext.identityFn('Task'),
-                    field: 'State',
-                    listeners: {
-                        ready: function (combo) {
-                            var noMapping = {};
-                            noMapping[combo.displayField] = '--No Mapping--';
-                            noMapping[combo.valueField] = '';
-                            combo.store.insert(0, [noMapping]);
-                        }
-                    }
-                }
-            }
-        ];
-        return columns;
-    },
-    _recordToGridRow: function (allowedValue, store) {
-        var columnName = allowedValue.get('StringValue');
-        var pref = store.getCount() === 0 ? null : this.getSetting('columnDefs');
-        var row = null;
-        console.log('recordToGridRow ', columnName, store.getCount());
-        console.log('columnDefs: ', this.getSetting('columnDefs'));
-        console.log("Pref: ", pref);
-        if (pref) {
-            row = _.find(pref, function (row) {
-                return row.column === columnName;
-            });
-            console.log('Row is: ', row);
-        }
-        if (!row) {
-            row = {
-                column: columnName,
-                display: true,
-                mapping: ''
-            };
-        }
-        return row;
     }
 
 });

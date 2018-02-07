@@ -82,7 +82,7 @@
                 {
                     text: 'Column',
                     dataIndex: 'column',
-                    emptyCellText: '- None -',
+                    emptyCellText: 'No Entry',
                     flex: 2
                 },
                 {
